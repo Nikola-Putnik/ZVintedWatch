@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/activity"
+	"github.com/Nikola-Putnik/ZVintedWatch/internal/app"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/engine"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/httpx"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/model"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/provider"
-	"github.com/Nikola-Putnik/ZVintedWatch/internal/provider/vinted"
 )
 
 // debugCmd runs a provider operation outside the application. It is meant
@@ -55,7 +55,7 @@ func debugCmd(args []string) error {
 	if *proxy != "" {
 		settings.Proxies = []string{*proxy}
 	}
-	registry := provider.NewRegistry(vinted.New(fetcher))
+	registry := app.NewRegistry(fetcher)
 	p, ok := registry.Get(*providerID)
 	if !ok {
 		return fmt.Errorf("unknown provider %q", *providerID)

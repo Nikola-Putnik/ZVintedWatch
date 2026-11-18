@@ -1,7 +1,7 @@
 // Package app wires every component of ZVintedWatch together and runs them.
 //
 // To add a marketplace, implement provider.Provider in its own package and
-// add it to the registry in New.
+// add it to NewRegistry.
 package app
 
 import (
@@ -28,6 +28,15 @@ import (
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/version"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/web"
 )
+
+// NewRegistry returns every available marketplace provider. To add a site,
+// implement provider.Provider in its own package and add it here: the engine,
+// the web interface and the debug command pick it up automatically.
+func NewRegistry(f *httpx.Fetcher) *provider.Registry {
+	return provider.NewRegistry(
+		vinted.New(f),
+	)
+}
 
 // App is a fully wired ZVintedWatch instance.
 type App struct {
@@ -66,10 +75,7 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	a.bus = activity.NewBus(1500, logger)
 	a.fetcher = httpx.New(a.bus, nil)
 
-	// Marketplace providers. Add new sites here.
-	a.registry = provider.NewRegistry(
-		vinted.New(a.fetcher),
-	)
+	a.registry = NewRegistry(a.fetcher)
 
 	for _, p := range a.registry.All() {
 		id := p.Info().ID

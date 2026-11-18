@@ -26,7 +26,3 @@ node_modules/
 *.swp
 .DS_Store
 Thumbs.db
-
-# Local AI assistant / tooling files
-CLAUDE.md
-.claude/
