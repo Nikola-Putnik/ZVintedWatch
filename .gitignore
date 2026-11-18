@@ -1,0 +1,32 @@
+# Runtime data (database, logs, secrets such as the Telegram token)
+/data/
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# Build output
+/dist/
+/bin/
+*.exe
+/zvintedwatch
+
+# Frontend build output is embedded into the binary at build time
+/internal/web/dist/*
+!/internal/web/dist/.gitkeep
+
+# Node
+node_modules/
+/web/.svelte-kit/
+/web/.vite/
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local AI assistant / tooling files
+CLAUDE.md
+.claude/
