@@ -64,7 +64,7 @@ Get the latest version from the [**Releases page**](https://github.com/Nikola-Pu
 
 | Your machine | File to download |
 |---|---|
-| Windows PC | `zvintedwatch_<version>_windows_amd64.zip` |
+| Windows PC | `zvintedwatch_<version>_windows_amd64.zip` (ARM PCs: `_windows_arm64.zip`) |
 | Linux server or seedbox (Intel/AMD 64-bit) | `zvintedwatch_<version>_linux_amd64.tar.gz` |
 | Raspberry Pi 4/5, ARM servers | `zvintedwatch_<version>_linux_arm64.tar.gz` |
 | Older 32-bit Raspberry Pi | `zvintedwatch_<version>_linux_armv7.tar.gz` |

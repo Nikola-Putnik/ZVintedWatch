@@ -45,7 +45,8 @@ archives:
     files:
       - README.md
       - LICENSE
-      - docs/*
+      - docs/**/*
+      - deploy/*
       - deploy/**/*
 
 checksum:
@@ -63,7 +64,7 @@ changelog:
 release:
   footer: |
     **Which file do I need?**
-    - Windows: `zvintedwatch_{{ .Version }}_windows_amd64.zip`
+    - Windows: `zvintedwatch_{{ .Version }}_windows_amd64.zip` (Windows on ARM: `windows_arm64`)
     - Linux server / seedbox (64-bit Intel/AMD): `zvintedwatch_{{ .Version }}_linux_amd64.tar.gz`
     - Raspberry Pi 4/5 and other 64-bit ARM: `zvintedwatch_{{ .Version }}_linux_arm64.tar.gz`
     - Older 32-bit Raspberry Pi: `zvintedwatch_{{ .Version }}_linux_armv7.tar.gz`
