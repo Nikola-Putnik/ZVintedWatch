@@ -14,6 +14,7 @@ import (
 
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/httpx"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/model"
+	"github.com/Nikola-Putnik/ZVintedWatch/internal/provider"
 )
 
 // maxItemScan bounds how much of an item page is read while looking for the
@@ -55,7 +56,7 @@ func (p *Provider) FetchDescription(ctx context.Context, l model.Listing) (strin
 			lease.Block("item page refused (HTTP 403)", 0)
 			return "", fmt.Errorf("vinted refused the item page (HTTP 403)")
 		case resp.Status == 404 || resp.Status == 410:
-			return "", fmt.Errorf("listing no longer available (HTTP %d)", resp.Status)
+			return "", fmt.Errorf("%w (HTTP %d)", provider.ErrListingUnavailable, resp.Status)
 		case resp.Status != 200:
 			return "", fmt.Errorf("unexpected response from vinted (HTTP %d)", resp.Status)
 		}

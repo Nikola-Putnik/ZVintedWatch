@@ -16,8 +16,13 @@ import (
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/model"
 )
 
-// ErrInvalidSearch is wrapped by ParseSearch errors caused by user input.
-var ErrInvalidSearch = errors.New("invalid search")
+var (
+	// ErrInvalidSearch is wrapped by ParseSearch errors caused by user input.
+	ErrInvalidSearch = errors.New("invalid search")
+	// ErrListingUnavailable is wrapped by FetchDescription errors when the
+	// listing was removed or sold; the engine then stops retrying it.
+	ErrListingUnavailable = errors.New("listing no longer available")
+)
 
 // Info describes a provider to the UI and the engine.
 type Info struct {
