@@ -5,6 +5,7 @@ go 1.27
 require (
 	github.com/bogdanfinn/fhttp v0.7.3
 	github.com/bogdanfinn/tls-client v1.18.1
+	golang.org/x/image v0.48.0
 	golang.org/x/text v0.44.0
 	modernc.org/sqlite v1.62.0
 )
