@@ -152,11 +152,11 @@ func TestParseCatalog(t *testing.T) {
 	want := []model.Listing{
 		{Provider: "vinted", ID: "1002", Title: "God of War Ragnarok PS5", Price: 25, Currency: "EUR", Brand: "Sony",
 			Condition: "Very good", URL: "https://www.vinted.fr/items/1002-god-of-war-ragnarok-ps5",
-			PhotoURL: "https://images.example/1002.webp"},
+			PhotoURL: "https://images.example/1002.webp", Sequence: 1002},
 		{Provider: "vinted", ID: "1001", Title: "Hoodie", Price: 12.5, Currency: "EUR", Brand: "Nike", Size: "M",
-			Condition: "Good", URL: "https://www.vinted.fr/items/1001-hoodie", Promoted: true},
+			Condition: "Good", URL: "https://www.vinted.fr/items/1001-hoodie", Promoted: true, Sequence: 1001},
 		{Provider: "vinted", ID: "1003", Title: "Book", Price: 3, Currency: "EUR", Size: "11 years / 146 cm",
-			Condition: "New with tags", URL: "https://www.vinted.fr/items/1003-book", Promoted: true},
+			Condition: "New with tags", URL: "https://www.vinted.fr/items/1003-book", Promoted: true, Sequence: 1003},
 	}
 	for i := range want {
 		if got[i] != want[i] {

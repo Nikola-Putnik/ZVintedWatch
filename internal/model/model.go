@@ -115,6 +115,12 @@ type Listing struct {
 	// Promoted marks sponsored results. They are ignored by the engine because
 	// they are usually old listings pushed to the top of the results.
 	Promoted bool `json:"promoted"`
+
+	// Sequence is an optional, monotonically increasing creation order (for
+	// example a sequential listing id). It lets the engine recognise old
+	// listings that resurface at the top of the results ("bumped" listings).
+	// Zero means unknown.
+	Sequence int64 `json:"-"`
 }
 
 // Match records that a listing satisfied an alert.
@@ -161,7 +167,10 @@ type Search struct {
 	WebURL string `json:"webUrl"`
 	// Seeded is true once the current results have been recorded as "seen".
 	// The first poll of a search never sends notifications.
-	Seeded       bool      `json:"seeded"`
+	Seeded bool `json:"seeded"`
+	// Watermark is the highest listing Sequence seen by the search (see
+	// Listing.Sequence); 0 when the provider does not provide sequences.
+	Watermark    int64     `json:"-"`
 	LastPolledAt time.Time `json:"lastPolledAt"`
 	LastStatus   string    `json:"lastStatus"`
 	LastError    string    `json:"lastError"`

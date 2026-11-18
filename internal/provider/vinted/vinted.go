@@ -52,7 +52,11 @@ func (p *Provider) Info() provider.Info {
 		MinIntervalSec:         10,
 		RecommendedIntervalSec: 60,
 		DescriptionInSearch:    false,
-		SearchPlaceholder:      "https://www.vinted.fr/catalog?search_text=… or plain keywords",
+		// Listing ids grow by very roughly one million per hour. Listings more
+		// than ~1.5 million ids behind the newest one already seen are old
+		// listings pushed back to the top of the results, not new ones.
+		SequenceTolerance: 1_500_000,
+		SearchPlaceholder: "https://www.vinted.fr/catalog?search_text=… or plain keywords",
 		SearchHelp: "Paste the address of a Vinted search page (apply the category, brand, size, " +
 			"condition and price filters you want first), or simply type keywords. " +
 			"Results are always sorted by newest first.",

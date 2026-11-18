@@ -10,7 +10,7 @@ import (
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/model"
 )
 
-const searchColumns = `id, provider, key, label, web_url, seeded, last_polled_at, last_status, last_error, created_at`
+const searchColumns = `id, provider, key, label, web_url, seeded, watermark, last_polled_at, last_status, last_error, created_at`
 
 // EnsureSearch returns the search identified by key, creating it when needed.
 // The label and web URL are refreshed on every call.
@@ -58,9 +58,9 @@ func (s *Store) ListSearches(ctx context.Context) ([]model.Search, error) {
 }
 
 // UpdateSearchState records the outcome of a poll.
-func (s *Store) UpdateSearchState(ctx context.Context, id int64, seeded bool, polledAt time.Time, status, lastErr string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE searches SET seeded = ?, last_polled_at = ?, last_status = ?, last_error = ?
-		WHERE id = ?`, boolInt(seeded), toMillis(polledAt), status, lastErr, id)
+func (s *Store) UpdateSearchState(ctx context.Context, id int64, seeded bool, watermark int64, polledAt time.Time, status, lastErr string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE searches SET seeded = ?, watermark = ?, last_polled_at = ?, last_status = ?,
+		last_error = ? WHERE id = ?`, boolInt(seeded), watermark, toMillis(polledAt), status, lastErr, id)
 	return err
 }
 
@@ -85,7 +85,7 @@ func scanSearch(sc scanner) (model.Search, error) {
 	var se model.Search
 	var seeded int
 	var polled, created int64
-	err := sc.Scan(&se.ID, &se.Provider, &se.Key, &se.Label, &se.WebURL, &seeded, &polled,
+	err := sc.Scan(&se.ID, &se.Provider, &se.Key, &se.Label, &se.WebURL, &seeded, &se.Watermark, &polled,
 		&se.LastStatus, &se.LastError, &created)
 	se.Seeded = seeded != 0
 	se.LastPolledAt, se.CreatedAt = fromMillis(polled), fromMillis(created)

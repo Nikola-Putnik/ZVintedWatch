@@ -110,6 +110,8 @@ func parseCatalog(body []byte, domain string) ([]model.Listing, error) {
 			Currency: it.Price.CurrencyCode,
 			URL:      absoluteURL(domain, it.URL, it.ID),
 			Promoted: it.Promoted || strings.Contains(it.ContentSource, "promoted"),
+			// Listing ids are assigned sequentially when listings are created.
+			Sequence: it.ID,
 		}
 		l.Price, _ = strconv.ParseFloat(it.Price.Amount, 64)
 		if b := strings.TrimSpace(it.ItemBox.FirstLine); b != "" && !strings.EqualFold(b, l.Title) {

@@ -44,6 +44,12 @@ type Info struct {
 	// DescriptionInSearch is true when search results already include the
 	// listing description, so FetchDescription is never needed.
 	DescriptionInSearch bool `json:"descriptionInSearch"`
+	// SequenceTolerance applies to providers that fill Listing.Sequence. A
+	// listing never seen before is only treated as new when its Sequence is
+	// at least the highest Sequence already seen minus this tolerance; older
+	// listings that resurface (paid "bumps", relisting) are ignored. The
+	// tolerance absorbs indexing delays. 0 disables the check.
+	SequenceTolerance int64 `json:"-"`
 	// SearchPlaceholder and SearchHelp are shown in the alert editor.
 	SearchPlaceholder string `json:"searchPlaceholder"`
 	SearchHelp        string `json:"searchHelp"`

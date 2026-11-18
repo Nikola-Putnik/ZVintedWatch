@@ -150,11 +150,11 @@ func TestSeenItemsAndSearchLifecycle(t *testing.T) {
 		t.Fatalf("second MarkSeen: %v %v", fresh, err)
 	}
 
-	if err := s.UpdateSearchState(ctx, a.ID, true, now, "ok", ""); err != nil {
+	if err := s.UpdateSearchState(ctx, a.ID, true, 42, now, "ok", ""); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.GetSearch(ctx, a.ID)
-	if err != nil || !got.Seeded || got.LastStatus != "ok" || got.LastPolledAt.UnixMilli() != now.UnixMilli() {
+	if err != nil || !got.Seeded || got.Watermark != 42 || got.LastStatus != "ok" || got.LastPolledAt.UnixMilli() != now.UnixMilli() {
 		t.Fatalf("state not saved: %+v %v", got, err)
 	}
 

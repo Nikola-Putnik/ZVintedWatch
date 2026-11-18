@@ -103,6 +103,7 @@ type job struct {
 	maxDelay time.Duration
 
 	seeded      bool
+	watermark   int64 // highest listing Sequence seen (see provider.Info.SequenceTolerance)
 	lastSuccess time.Time
 	nextRun     time.Time
 	running     bool
@@ -225,6 +226,7 @@ func (e *Engine) Reload(ctx context.Context) error {
 			j = &job{
 				key:         key,
 				seeded:      s.Seeded,
+				watermark:   s.Watermark,
 				lastSuccess: s.LastPolledAt,
 				lastStatus:  s.LastStatus,
 				lastError:   s.LastError,
@@ -364,7 +366,8 @@ func (e *Engine) runJob(ctx context.Context, j *job) {
 	e.mu.Lock()
 	p, q, searchID := j.provider, j.query, j.searchID
 	alerts := j.alerts
-	seeded, lastSuccess := j.seeded, j.lastSuccess
+	st := pollState{seeded: j.seeded, watermark: j.watermark, lastSuccess: j.lastSuccess}
+	lastSuccess := j.lastSuccess
 	pending := j.pending
 	j.pending = nil
 	e.mu.Unlock()
@@ -373,13 +376,14 @@ func (e *Engine) runJob(ctx context.Context, j *job) {
 	sctx := activity.WithScope(ctx, activity.Scope{Provider: info.ID, SearchID: searchID, Search: q.Label})
 	now := time.Now()
 
-	outcome := e.poll(sctx, p, q, searchID, alerts, seeded, lastSuccess, pending, now)
+	outcome := e.poll(sctx, p, q, searchID, alerts, st, pending, now)
 
 	e.mu.Lock()
 	j.running = false
 	j.lastStatus, j.lastError = outcome.status, outcome.errText
 	if outcome.err == nil {
 		j.seeded = true
+		j.watermark = max(j.watermark, outcome.watermark)
 		j.lastSuccess = now
 		j.lastResults = outcome.listings
 		j.lastNew = outcome.newCount
@@ -399,23 +403,31 @@ func (e *Engine) runJob(ctx context.Context, j *job) {
 		if outcome.err == nil {
 			polled = now
 		}
-		_ = e.store.UpdateSearchState(context.WithoutCancel(ctx), searchID, seeded || outcome.err == nil,
-			polled, outcome.status, outcome.errText)
+		_ = e.store.UpdateSearchState(context.WithoutCancel(ctx), searchID, st.seeded || outcome.err == nil,
+			max(st.watermark, outcome.watermark), polled, outcome.status, outcome.errText)
 	}
 	e.signal()
 }
 
+// pollState is the job state a poll depends on.
+type pollState struct {
+	seeded      bool
+	watermark   int64
+	lastSuccess time.Time
+}
+
 type pollOutcome struct {
-	listings []model.Listing
-	newCount int
-	pending  []pendingItem
-	status   string
-	errText  string
-	err      error
+	listings  []model.Listing
+	newCount  int
+	watermark int64
+	pending   []pendingItem
+	status    string
+	errText   string
+	err       error
 }
 
 func (e *Engine) poll(ctx context.Context, p provider.Provider, q provider.Query, searchID int64,
-	alerts []*compiledAlert, seeded bool, lastSuccess time.Time, pending []pendingItem, now time.Time) pollOutcome {
+	alerts []*compiledAlert, st pollState, pending []pendingItem, now time.Time) pollOutcome {
 
 	listings, err := p.Search(ctx, q)
 	if err != nil {
@@ -433,12 +445,14 @@ func (e *Engine) poll(ctx context.Context, p provider.Provider, q provider.Query
 
 	organic := make([]model.Listing, 0, len(listings))
 	ids := make([]string, 0, len(listings))
+	var maxSeq int64
 	for _, l := range listings {
 		if l.Promoted {
 			continue
 		}
 		organic = append(organic, l)
 		ids = append(ids, l.ID)
+		maxSeq = max(maxSeq, l.Sequence)
 	}
 	freshIDs, err := e.store.MarkSeen(ctx, searchID, ids, now)
 	if err != nil {
@@ -446,28 +460,38 @@ func (e *Engine) poll(ctx context.Context, p provider.Provider, q provider.Query
 		return pollOutcome{status: "error", errText: err.Error(), err: err}
 	}
 
-	reseed := !lastSuccess.IsZero() && now.Sub(lastSuccess) > e.opts.ReseedAfter
-	if !seeded || reseed {
+	reseed := !st.lastSuccess.IsZero() && now.Sub(st.lastSuccess) > e.opts.ReseedAfter
+	if !st.seeded || reseed {
 		reason := "first refresh"
-		if reseed && seeded {
-			reason = fmt.Sprintf("not refreshed for %s", now.Sub(lastSuccess).Round(time.Minute))
+		if reseed && st.seeded {
+			reason = fmt.Sprintf("not refreshed for %s", now.Sub(st.lastSuccess).Round(time.Minute))
 		}
 		e.publish(ctx, activity.Event{Kind: activity.KindPoll, Message: fmt.Sprintf(
 			"Baseline recorded (%s): %d listings marked as seen, alerts start with the next new listing",
 			reason, len(organic))})
-		return pollOutcome{listings: organic, status: "ok"}
+		return pollOutcome{listings: organic, watermark: maxSeq, status: "ok"}
 	}
 
 	// New listings, oldest first so notifications arrive in listing order.
+	// Listings never seen before but much older than the newest ones already
+	// seen are old listings pushed back to the top ("bumped"): skip them.
 	freshSet := make(map[string]bool, len(freshIDs))
 	for _, id := range freshIDs {
 		freshSet[id] = true
 	}
+	tolerance := p.Info().SequenceTolerance
 	var fresh []model.Listing
+	resurfaced := 0
 	for i := len(organic) - 1; i >= 0; i-- {
-		if freshSet[organic[i].ID] {
-			fresh = append(fresh, organic[i])
+		l := organic[i]
+		if !freshSet[l.ID] {
+			continue
 		}
+		if tolerance > 0 && st.watermark > 0 && l.Sequence > 0 && l.Sequence < st.watermark-tolerance {
+			resurfaced++
+			continue
+		}
+		fresh = append(fresh, l)
 	}
 
 	candidates := make([]pendingItem, 0, len(pending)+len(fresh))
@@ -499,6 +523,9 @@ func (e *Engine) poll(ctx context.Context, p provider.Provider, q provider.Query
 	if matches != 1 {
 		msg += "es"
 	}
+	if resurfaced > 0 {
+		msg += fmt.Sprintf(" · %d old relisted/bumped ignored", resurfaced)
+	}
 	if promoted := len(listings) - len(organic); promoted > 0 {
 		msg += fmt.Sprintf(" · %d promoted ignored", promoted)
 	}
@@ -507,7 +534,7 @@ func (e *Engine) poll(ctx context.Context, p provider.Provider, q provider.Query
 	}
 	e.publish(ctx, activity.Event{Kind: activity.KindPoll, Message: msg, Details: details})
 
-	return pollOutcome{listings: organic, newCount: len(fresh), pending: retry, status: "ok"}
+	return pollOutcome{listings: organic, newCount: len(fresh), watermark: maxSeq, pending: retry, status: "ok"}
 }
 
 // evaluate returns the alerts a listing matches. needRetry is true when a

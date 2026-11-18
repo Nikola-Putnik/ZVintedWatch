@@ -24,10 +24,11 @@ type fakeProvider struct {
 	descCalls   map[string]int
 	descs       map[string]string
 	descErr     error
+	tolerance   int64
 }
 
 func (f *fakeProvider) Info() provider.Info {
-	return provider.Info{ID: "fake", Name: "Fake", MinIntervalSec: 10}
+	return provider.Info{ID: "fake", Name: "Fake", MinIntervalSec: 10, SequenceTolerance: f.tolerance}
 }
 
 func (f *fakeProvider) ParseSearch(in provider.SearchInput) (provider.Query, error) {
@@ -284,6 +285,30 @@ func TestListingGoneIsNotRetried(t *testing.T) {
 	f.poll()
 	if p := f.eng.Searches("")[0].PendingItems; p != 0 {
 		t.Fatalf("expected no pending item, got %d", p)
+	}
+}
+
+func TestBumpedListingsAreIgnored(t *testing.T) {
+	f := newFixture(t)
+	f.fake.tolerance = 100
+	f.addAlert(model.Alert{Name: "All", SearchInput: "lego", DestinationIDs: []int64{1}})
+	seq := func(l model.Listing, s int64) model.Listing { l.Sequence = s; return l }
+	f.fake.results = [][]model.Listing{
+		{seq(listing("1000", "Lego", 1), 1000)},
+		{seq(listing("1990", "Lego new", 1), 1990), seq(listing("5", "Lego bumped", 1), 5), seq(listing("950", "Lego slightly late", 1), 950)},
+	}
+	f.poll()
+	f.poll()
+	var got []string
+	for _, n := range f.notif.sent {
+		got = append(got, n.Listing.ID)
+	}
+	if strings.Join(got, ",") != "950,1990" {
+		t.Fatalf("expected listings 950 and 1990 to be notified, got %v", got)
+	}
+	searches, _ := f.store.ListSearches(f.ctx)
+	if searches[0].Watermark != 1990 {
+		t.Fatalf("watermark not persisted: %d", searches[0].Watermark)
 	}
 }
 
