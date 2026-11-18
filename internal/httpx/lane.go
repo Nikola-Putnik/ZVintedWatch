@@ -163,7 +163,7 @@ func (l *Lease) Block(reason string, retryAfter time.Duration) time.Duration {
 	if l.f.bus != nil {
 		l.f.bus.Publish(activity.Event{
 			Level:    activity.LevelWarn,
-			Kind:     activity.KindSystem,
+			Kind:     activity.KindHealth,
 			Provider: l.provider,
 			Message: fmt.Sprintf("%s on %s — pausing requests for %s (until %s)",
 				reason, ln.label, d.Round(time.Second), now.Add(d).Format("15:04:05")),

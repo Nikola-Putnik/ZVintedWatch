@@ -21,7 +21,8 @@ const (
 	KindPoll    Kind = "poll"    // the outcome of a search refresh
 	KindMatch   Kind = "match"   // a listing matched an alert
 	KindNotify  Kind = "notify"  // a Telegram notification was sent (or failed)
-	KindSystem  Kind = "system"  // lifecycle, configuration and health messages
+	KindSystem  Kind = "system"  // lifecycle and configuration messages
+	KindHealth  Kind = "health"  // a site started or stopped refusing requests
 )
 
 // Level is the severity of an event.
