@@ -1,0 +1,26 @@
+# User service: no root needed. Suited to seedboxes and shared hosts.
+#
+#   mkdir -p ~/zvintedwatch ~/.config/systemd/user
+#   cp zvintedwatch ~/zvintedwatch/ && chmod +x ~/zvintedwatch/zvintedwatch
+#   cp zvintedwatch-user.service ~/.config/systemd/user/zvintedwatch.service
+#   systemctl --user daemon-reload && systemctl --user enable --now zvintedwatch
+#   journalctl --user -u zvintedwatch -f
+#
+# Change the port if 8080 is taken on a shared machine. To keep the service
+# running after you log out, the host must allow lingering
+# (loginctl enable-linger $USER); otherwise use the crontab method described
+# in docs/deployment.md.
+
+[Unit]
+Description=ZVintedWatch - second-hand listing alerts (user service)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/zvintedwatch
+ExecStart=%h/zvintedwatch/zvintedwatch run -listen 127.0.0.1:8080 -data-dir %h/zvintedwatch/data -open=false
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

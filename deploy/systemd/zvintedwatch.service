@@ -1,0 +1,34 @@
+# System-wide service for a Linux server (requires root to install).
+#
+#   sudo useradd --system --home /opt/zvintedwatch --shell /usr/sbin/nologin zvintedwatch
+#   sudo install -d -o zvintedwatch -g zvintedwatch /opt/zvintedwatch
+#   sudo install -m 755 zvintedwatch /opt/zvintedwatch/zvintedwatch
+#   sudo cp zvintedwatch.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now zvintedwatch
+#   journalctl -u zvintedwatch -f      # logs (and the generated password)
+#
+# See docs/deployment.md for details.
+
+[Unit]
+Description=ZVintedWatch - second-hand listing alerts
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zvintedwatch
+Group=zvintedwatch
+WorkingDirectory=/opt/zvintedwatch
+ExecStart=/opt/zvintedwatch/zvintedwatch run -listen 0.0.0.0:8080 -data-dir /opt/zvintedwatch/data -open=false
+Restart=on-failure
+RestartSec=10
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/zvintedwatch
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

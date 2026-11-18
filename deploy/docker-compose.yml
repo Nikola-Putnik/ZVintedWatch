@@ -1,0 +1,15 @@
+# Run ZVintedWatch with Docker Compose:
+#   docker compose up -d
+#   docker compose logs zvintedwatch   # shows the generated password on first start
+# Then open http://<server-ip>:8080
+services:
+  zvintedwatch:
+    image: ghcr.io/nikola-putnik/zvintedwatch:latest
+    container_name: zvintedwatch
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=Europe/Paris # used for the "matches today" counter and log times

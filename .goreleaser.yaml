@@ -1,0 +1,72 @@
+# GoReleaser configuration: builds the release archives attached to GitHub
+# releases. Triggered by pushing a tag such as v1.0.0 (see
+# .github/workflows/release.yml). Test locally with:
+#   goreleaser release --snapshot --clean
+version: 2
+
+project_name: zvintedwatch
+
+before:
+  hooks:
+    # The web interface is compiled once and embedded in every binary.
+    - npm --prefix web ci
+    - npm --prefix web run build
+
+builds:
+  - id: zvintedwatch
+    main: ./cmd/zvintedwatch
+    binary: zvintedwatch
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/Nikola-Putnik/ZVintedWatch/internal/version.Version={{ .Version }}
+      - -X github.com/Nikola-Putnik/ZVintedWatch/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/Nikola-Putnik/ZVintedWatch/internal/version.Date={{ .Date }}
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64, arm]
+    goarm: ["7"]
+    ignore:
+      - goos: windows
+        goarch: arm
+      - goos: darwin
+        goarch: arm
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+      - docs/*
+      - deploy/**/*
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs"
+      - "^chore"
+      - "^ci"
+      - "^test"
+
+release:
+  footer: |
+    **Which file do I need?**
+    - Windows: `zvintedwatch_{{ .Version }}_windows_amd64.zip`
+    - Linux server / seedbox (64-bit Intel/AMD): `zvintedwatch_{{ .Version }}_linux_amd64.tar.gz`
+    - Raspberry Pi 4/5 and other 64-bit ARM: `zvintedwatch_{{ .Version }}_linux_arm64.tar.gz`
+    - Older 32-bit Raspberry Pi: `zvintedwatch_{{ .Version }}_linux_armv7.tar.gz`
+    - macOS: `darwin_arm64` (Apple Silicon) or `darwin_amd64` (Intel)
+
+    Docker: `docker pull ghcr.io/nikola-putnik/zvintedwatch:{{ .Version }}`

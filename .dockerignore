@@ -1,0 +1,11 @@
+.git
+.github
+.scratch
+data
+dist
+bin
+**/node_modules
+internal/web/dist
+*.db
+*.log
+*.exe

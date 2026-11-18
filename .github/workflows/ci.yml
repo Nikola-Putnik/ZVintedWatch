@@ -19,6 +19,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
       - name: Vet
         run: go vet ./...
 
@@ -29,7 +32,26 @@ jobs:
         env:
           CGO_ENABLED: "0"
         run: |
-          for target in linux/amd64 linux/arm64 windows/amd64 darwin/arm64; do
+          for target in linux/amd64 linux/arm64 linux/arm windows/amd64 darwin/arm64; do
             GOOS="${target%/*}" GOARCH="${target#*/}" go build -o /dev/null ./cmd/zvintedwatch
             echo "built $target"
           done
+
+  web:
+    name: Web interface (type check, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
