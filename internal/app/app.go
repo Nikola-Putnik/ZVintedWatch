@@ -23,6 +23,7 @@ import (
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/httpx"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/notify/telegram"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/provider"
+	"github.com/Nikola-Putnik/ZVintedWatch/internal/provider/cashconverters"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/provider/vinted"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/store"
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/version"
@@ -35,6 +36,7 @@ import (
 func NewRegistry(f *httpx.Fetcher) *provider.Registry {
 	return provider.NewRegistry(
 		vinted.New(f),
+		cashconverters.New(f),
 	)
 }
 
