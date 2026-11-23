@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-23
+
 ### Added
 
 - Cash Converters Belgium module (cashconverters.be, French and Dutch): search and category pages
@@ -47,5 +49,6 @@ All notable changes to this project are documented in this file. The format is b
 - Single binary for Windows (amd64, arm64), Linux (amd64, arm64, armv7) and macOS, Docker image,
   systemd units.
 
-[Unreleased]: https://github.com/Nikola-Putnik/ZVintedWatch/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Nikola-Putnik/ZVintedWatch/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Nikola-Putnik/ZVintedWatch/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Nikola-Putnik/ZVintedWatch/releases/tag/v0.1.0
