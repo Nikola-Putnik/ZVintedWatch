@@ -119,6 +119,10 @@ export const api = {
     put<NetworkSettings>(`/api/settings/network/${provider}`, s),
   resetCooldown: (provider: string) => post<Health>(`/api/providers/${provider}/reset-cooldown`),
 
+  // Sites
+  setSiteEnabled: (provider: string, enabled: boolean) =>
+    put<{ enabled: boolean }>(`/api/sites/${provider}`, { enabled }),
+
   // Activity
   activity: (limit = 500) => get<ActivityEvent[]>(`/api/activity?limit=${limit}`),
 };

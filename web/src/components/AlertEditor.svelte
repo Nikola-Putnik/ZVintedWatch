@@ -187,7 +187,7 @@
           spellcheck="false"
           aria-label="Search URL or keywords"
         />
-        {#if !isURL}
+        {#if !isURL && provider.domains.length > 1}
           <select class="input domain" bind:value={draft.domain} aria-label="Country">
             {#each provider.domains as d}<option value={d}>{d}</option>{/each}
           </select>

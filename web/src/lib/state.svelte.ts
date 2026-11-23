@@ -61,6 +61,18 @@ export function stopStatusPolling() {
   if (statusTimer) clearInterval(statusTimer);
 }
 
+/** Pauses or resumes a whole site. Its alerts are kept. */
+export async function setSiteEnabled(id: string, enabled: boolean) {
+  const name = providerInfo(id)?.name ?? id;
+  try {
+    await api.setSiteEnabled(id, enabled);
+    toast(enabled ? `${name} resumed` : `${name} paused: its alerts are kept but not refreshed`, 'info');
+  } catch (e) {
+    toastError(e);
+  }
+  await refreshStatus();
+}
+
 export function providerInfo(id: string): ProviderInfo | undefined {
   return app.meta?.providers.find((p) => p.id === id);
 }

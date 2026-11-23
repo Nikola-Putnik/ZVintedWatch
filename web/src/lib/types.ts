@@ -75,6 +75,8 @@ export interface ProviderStatus {
   id: string;
   name: string;
   color: string;
+  /** False when the whole site is paused by the user. */
+  enabled: boolean;
   health: Health;
   alerts: number;
   enabledAlerts: number;
@@ -85,6 +87,8 @@ export interface ProviderStatus {
 
 export interface Status {
   providers: ProviderStatus[];
+  /** Alerts whose site module is not installed in this version. */
+  orphanAlerts: number;
   telegram: { configured: boolean; botUsername: string; destinations: number };
 }
 
@@ -99,6 +103,8 @@ export interface Listing {
   brand?: string;
   size?: string;
   condition?: string;
+  category?: string;
+  location?: string;
   url: string;
   photoUrl?: string;
   promoted: boolean;

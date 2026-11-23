@@ -6,7 +6,7 @@
 
   let { match }: { match: Match } = $props();
   const l = $derived(match.listing);
-  const facts = $derived([l.brand, l.size, l.condition].filter(Boolean).join(' · '));
+  const facts = $derived([l.brand, l.size, l.condition, l.category].filter(Boolean).join(' · '));
   const delivery = $derived(
     {
       sent: { cls: 'badge-success', text: 'Sent' },
@@ -28,7 +28,8 @@
   </div>
   <div class="info">
     <div class="title" title={l.title}>{l.title}</div>
-    {#if facts}<div class="facts ellipsis">{facts}</div>{/if}
+    {#if facts}<div class="facts ellipsis" title={facts}>{facts}</div>{/if}
+    {#if l.location}<div class="facts ellipsis" title={l.location}>📍 {l.location}</div>{/if}
     <div class="meta">
       <span class="alert-name ellipsis" title={match.alertName}><Icon name="bell" size={12} /> {match.alertName}</span>
       <span class="badge {delivery.cls}">{delivery.text}</span>

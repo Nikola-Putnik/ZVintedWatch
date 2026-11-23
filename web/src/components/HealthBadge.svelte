@@ -7,9 +7,9 @@
   const view = $derived.by(() => {
     switch (health?.state) {
       case 'cooldown':
-        return { cls: 'badge-danger', text: `Paused until ${clockTime(health.cooldownUntil)}` };
+        return { cls: 'badge-danger', text: `Cooling down until ${clockTime(health.cooldownUntil)}` };
       case 'degraded':
-        return { cls: 'badge-warning', text: 'Some proxies paused' };
+        return { cls: 'badge-warning', text: 'Some proxies cooling down' };
       case 'error':
         return { cls: 'badge-danger', text: 'Error' };
       default:

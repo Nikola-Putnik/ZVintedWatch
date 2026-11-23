@@ -38,7 +38,7 @@
     perHour: providers.reduce((n, p) => n + p.requestsPerHour, 0),
     today: providers.reduce((n, p) => n + p.matchesToday, 0),
   });
-  const firstSite = $derived(app.meta?.providers[0]?.id ?? 'vinted');
+  const firstSite = $derived(app.meta?.providers[0]?.id ?? '');
 
   const steps = $derived([
     { done: !!telegram?.configured, title: 'Connect your Telegram bot', text: 'Paste the token given by @BotFather.', href: '#/settings' },
@@ -64,6 +64,16 @@
       </p>
     </div>
   </div>
+
+  {#if (app.status?.orphanAlerts ?? 0) > 0}
+    <div class="callout warning orphans">
+      <Icon name="info" size={16} />
+      <span>
+        {plural(app.status?.orphanAlerts ?? 0, 'alert belongs', 'alerts belong')} to a site that is not available in this
+        version. They are kept untouched and will work again if the site module comes back.
+      </span>
+    </div>
+  {/if}
 
   {#if onboarding}
     <section class="card card-pad onboarding">
@@ -96,12 +106,16 @@
   <div class="section-title"><h2>Sites</h2></div>
   <section class="sites">
     {#each providers as p (p.id)}
-      <a class="site card" href="#/site/{p.id}" style="--site: {p.color}">
+      <a class="site card" class:off={!p.enabled} href="#/site/{p.id}" style="--site: {p.color}">
         <div class="row">
           <span class="site-mark">{p.name.slice(0, 1)}</span>
           <div class="grow">
             <h3>{p.name}</h3>
-            <HealthBadge health={p.health} />
+            {#if p.enabled}
+              <HealthBadge health={p.health} />
+            {:else}
+              <span class="badge"><Icon name="pause" size={11} /> Paused</span>
+            {/if}
           </div>
           <Icon name="chevronRight" />
         </div>
@@ -239,6 +253,13 @@
     text-decoration: none !important;
     border-top: 3px solid var(--site);
     transition: box-shadow 0.12s, transform 0.12s;
+  }
+  .site.off {
+    opacity: 0.6;
+    border-top-color: var(--border-strong);
+  }
+  .orphans {
+    margin-bottom: 1.25rem;
   }
   .site:hover {
     box-shadow: var(--shadow);

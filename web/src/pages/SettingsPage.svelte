@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
-  import { app, bootstrap, refreshStatus, toast, toastError } from '../lib/state.svelte';
+  import { app, bootstrap, refreshStatus, setSiteEnabled, toast, toastError } from '../lib/state.svelte';
   import type { ChatInfo, Destination, NetworkSettings, TelegramSettings } from '../lib/types';
   import Icon from '../components/Icon.svelte';
   import HealthBadge from '../components/HealthBadge.svelte';
+  import Toggle from '../components/Toggle.svelte';
   import { confirmDialog } from '../components/Confirm.svelte';
 
   let telegram = $state<TelegramSettings | null>(null);
@@ -171,6 +172,7 @@
 
   <nav class="jump-links">
     <a href="#/settings" onclick={(e) => { e.preventDefault(); document.getElementById('telegram')?.scrollIntoView({ behavior: 'smooth' }); }}>Telegram</a>
+    <a href="#/settings" onclick={(e) => { e.preventDefault(); document.getElementById('sites')?.scrollIntoView({ behavior: 'smooth' }); }}>Sites</a>
     <a href="#/settings" onclick={(e) => { e.preventDefault(); document.getElementById('network')?.scrollIntoView({ behavior: 'smooth' }); }}>Network</a>
     <a href="#/settings" onclick={(e) => { e.preventDefault(); document.getElementById('security')?.scrollIntoView({ behavior: 'smooth' }); }}>Security</a>
   </nav>
@@ -288,6 +290,38 @@
         <span class="hint">Get a message when a site starts refusing requests and ZVintedWatch pauses.</span>
       </div>
     {/if}
+  </section>
+
+  <!-- Sites -->
+  <section class="card card-pad block" id="sites">
+    <div class="block-head">
+      <span class="block-icon"><Icon name="layers" /></span>
+      <div class="grow">
+        <h2>Sites</h2>
+        <p class="text-2 small">
+          Each site is an independent module. Pausing a site stops all its requests; its alerts are kept and the
+          other sites are not affected.
+        </p>
+      </div>
+    </div>
+    <div class="dest-list">
+      {#each app.meta?.providers ?? [] as p (p.id)}
+        {@const st = app.status?.providers.find((x) => x.id === p.id)}
+        <div class="dest">
+          <span class="dot" style="background: {p.color}"></span>
+          <div class="grow">
+            <div class="dest-name">{p.name}</div>
+            <div class="muted small">
+              {st?.enabledAlerts ?? 0}/{st?.alerts ?? 0} alerts enabled ·
+              <a href={p.website} target="_blank" rel="noopener noreferrer">{p.website.replace(/^https?:\/\//, '')}</a>
+            </div>
+          </div>
+          <span class="small text-2">{st?.enabled === false ? 'Paused' : 'Active'}</span>
+          <Toggle checked={st?.enabled ?? true} label={st?.enabled === false ? `Resume ${p.name}` : `Pause ${p.name}`}
+            onchange={(v) => setSiteEnabled(p.id, v)} />
+        </div>
+      {/each}
+    </div>
   </section>
 
   <!-- Network -->

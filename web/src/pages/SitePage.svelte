@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '../lib/api';
-  import { app, providerInfo, refreshStatus, toast, toastError } from '../lib/state.svelte';
+  import { app, providerInfo, refreshStatus, setSiteEnabled, toast, toastError } from '../lib/state.svelte';
   import type { Alert, AlertView, Destination, Match, SearchStatus } from '../lib/types';
-  import { formatInterval, formatPrice, plural } from '../lib/format';
+  import { formatInterval, plural } from '../lib/format';
   import Icon from '../components/Icon.svelte';
   import Toggle from '../components/Toggle.svelte';
   import HealthBadge from '../components/HealthBadge.svelte';
@@ -17,6 +17,7 @@
 
   const info = $derived(providerInfo(providerId));
   const status = $derived(app.status?.providers.find((p) => p.id === providerId));
+  const siteEnabled = $derived(status?.enabled ?? true);
 
   let alerts = $state<AlertView[]>([]);
   let searches = $state<SearchStatus[]>([]);
@@ -188,7 +189,11 @@
         <div>
           <div class="row wrap">
             <h1>{info.name}</h1>
-            <HealthBadge health={status?.health} />
+            {#if siteEnabled}
+              <HealthBadge health={status?.health} />
+            {:else}
+              <span class="badge badge-warning"><Icon name="pause" size={11} /> Paused</span>
+            {/if}
           </div>
           <p>
             {plural(status?.enabledAlerts ?? 0, 'active alert')} · {plural(status?.searches ?? 0, 'search', 'searches')} ·
@@ -196,10 +201,26 @@
           </p>
         </div>
       </div>
-      <button class="btn btn-primary" onclick={() => (editing = newAlert())}><Icon name="plus" size={16} /> New alert</button>
+      <div class="row header-actions">
+        <label class="row site-switch" title={siteEnabled ? `Pause every ${info.name} alert` : `Resume ${info.name}`}>
+          <Toggle checked={siteEnabled} label={siteEnabled ? 'Pause site' : 'Resume site'}
+            onchange={(v) => setSiteEnabled(providerId, v)} />
+          <span class="small text-2">{siteEnabled ? 'Site active' : 'Site paused'}</span>
+        </label>
+        <button class="btn btn-primary" onclick={() => (editing = newAlert())}><Icon name="plus" size={16} /> New alert</button>
+      </div>
     </div>
 
-    {#if status?.health.state === 'cooldown' || status?.health.state === 'degraded'}
+    {#if !siteEnabled}
+      <div class="callout warning cooldown">
+        <Icon name="pause" size={18} />
+        <div class="grow">
+          <strong>{info.name} is paused.</strong> Its alerts are kept but no request is sent to {info.name}.
+          Other sites are not affected. When you resume it, listings posted in the meantime are not sent.
+        </div>
+        <button class="btn btn-sm" onclick={() => setSiteEnabled(providerId, true)}>Resume</button>
+      </div>
+    {:else if status?.health.state === 'cooldown' || status?.health.state === 'degraded'}
       <div class="callout danger cooldown">
         <Icon name="alert" size={18} />
         <div class="grow">
@@ -388,6 +409,13 @@
   .cooldown {
     margin-bottom: 1.25rem;
     align-items: center;
+  }
+  .header-actions {
+    gap: 1.1rem;
+    flex-wrap: wrap;
+  }
+  .site-switch {
+    cursor: pointer;
   }
   .toolbar {
     display: flex;

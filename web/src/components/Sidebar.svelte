@@ -36,11 +36,13 @@
     <div class="group-title">Sites</div>
     {#each app.meta?.providers ?? [] as p (p.id)}
       {@const st = statusById[p.id]}
-      <a class="item" class:active={isActive('/site/' + p.id)} href="#/site/{p.id}">
+      <a class="item" class:active={isActive('/site/' + p.id)} class:off={st && !st.enabled} href="#/site/{p.id}">
         <span class="site-dot" style="background: {p.color}"></span>
         <span class="grow">{p.name}</span>
-        {#if st?.health.state === 'cooldown'}
-          <span class="pill danger" title="Requests paused">paused</span>
+        {#if st && !st.enabled}
+          <span class="pill" title="Site paused">off</span>
+        {:else if st?.health.state === 'cooldown'}
+          <span class="pill danger" title="The site refused requests; cooling down">cooldown</span>
         {:else if st}
           <span class="pill" title="Active alerts">{st.enabledAlerts}</span>
         {/if}
@@ -134,6 +136,9 @@
   .item.active {
     background: var(--accent-soft);
     color: var(--accent-text);
+  }
+  .item.off .site-dot {
+    opacity: 0.35;
   }
   .site-dot {
     width: 12px;
