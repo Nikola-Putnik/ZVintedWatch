@@ -12,6 +12,7 @@ import (
 	"errors"
 	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/Nikola-Putnik/ZVintedWatch/internal/model"
 )
@@ -98,6 +99,15 @@ type Provider interface {
 	FetchDescription(ctx context.Context, l model.Listing) (string, error)
 }
 
+// Enricher is optionally implemented by providers that can add details to a
+// listing that matched an alert, such as the store or city holding the item,
+// when search results do not include them. The engine calls Enrich at most
+// once per matched listing, never for listings that match no alert, so the
+// extra request only happens when a notification is about to be sent.
+type Enricher interface {
+	Enrich(ctx context.Context, l *model.Listing) error
+}
+
 // Registry holds the available providers.
 type Registry struct {
 	byID map[string]Provider
@@ -116,6 +126,29 @@ func NewRegistry(providers ...Provider) *Registry {
 func (r *Registry) Get(id string) (Provider, bool) {
 	p, ok := r.byID[id]
 	return p, ok
+}
+
+// ForURL returns the provider whose domains include the host of rawURL
+// ("https://www.vinted.fr/…" → Vinted). It returns false for plain keywords
+// and unknown websites.
+func (r *Registry) ForURL(rawURL string) (Provider, bool) {
+	raw := strings.TrimSpace(rawURL)
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Hostname() == "" {
+		return nil, false
+	}
+	host := strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+	for _, p := range r.All() {
+		for _, d := range p.Info().Domains {
+			if host == d || strings.HasSuffix(host, "."+d) {
+				return p, true
+			}
+		}
+	}
+	return nil, false
 }
 
 // All returns every provider sorted by display name.

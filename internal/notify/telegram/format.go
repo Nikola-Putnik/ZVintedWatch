@@ -15,6 +15,7 @@ const captionLimit = 1024
 //
 //	<b>God of War Ragnarök PS5</b>
 //	<b>25.00 €</b> · Sony · Very good
+//	📍 Store or city (when the site provides it)
 //	🔔 GoW deals, PS5 games · Vinted
 func formatCaption(n engine.Notification) string {
 	l := n.Listing
@@ -23,12 +24,15 @@ func formatCaption(n engine.Notification) string {
 	b.WriteString("<b>" + esc(truncate(l.Title, 200)) + "</b>\n")
 
 	facts := []string{"<b>" + esc(engine.FormatPrice(l.Price, l.Currency)) + "</b>"}
-	for _, f := range []string{l.Brand, l.Size, l.Condition} {
+	for _, f := range []string{l.Brand, l.Size, l.Condition, l.Category} {
 		if f = strings.TrimSpace(f); f != "" {
 			facts = append(facts, esc(truncate(f, 60)))
 		}
 	}
 	b.WriteString(strings.Join(facts, " · ") + "\n")
+	if loc := strings.TrimSpace(l.Location); loc != "" {
+		b.WriteString("📍 " + esc(truncate(loc, 160)) + "\n")
+	}
 
 	names := make([]string, 0, len(n.Alerts))
 	for _, a := range n.Alerts {

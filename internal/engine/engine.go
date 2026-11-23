@@ -86,9 +86,10 @@ type Engine struct {
 	notifier Notifier
 	opts     Options
 
-	mu   sync.Mutex
-	jobs map[string]*job
-	wake chan struct{}
+	mu     sync.Mutex
+	jobs   map[string]*job
+	wake   chan struct{}
+	warned map[string]bool // unknown sites already reported
 }
 
 // job polls one search on behalf of one or more alerts. Fields are guarded
@@ -136,6 +137,7 @@ func New(st *store.Store, reg *provider.Registry, bus *activity.Bus, notifier No
 		opts:     opts.withDefaults(),
 		jobs:     map[string]*job{},
 		wake:     make(chan struct{}, 1),
+		warned:   map[string]bool{},
 	}
 }
 
@@ -166,6 +168,10 @@ func (e *Engine) Reload(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	paused, err := e.pausedSites(ctx)
+	if err != nil {
+		return err
+	}
 
 	type group struct {
 		p      provider.Provider
@@ -174,15 +180,17 @@ func (e *Engine) Reload(ctx context.Context) error {
 	}
 	groups := map[string]*group{}
 	for _, a := range alerts {
-		if !a.Enabled {
+		if !a.Enabled || paused[a.Provider] {
 			continue
 		}
 		p, ok := e.registry.Get(a.Provider)
 		if !ok {
-			e.system(activity.LevelWarn, a.Provider, fmt.Sprintf("Alert %q uses an unknown site %q", a.Name, a.Provider))
+			// The site module is not installed (anymore). The alert is kept
+			// untouched and works again if the module comes back.
+			e.warnUnknownSite(a.Provider)
 			continue
 		}
-		q, err := p.ParseSearch(provider.SearchInput{Text: a.SearchInput, Domain: a.Domain})
+		q, err := parseSearch(p, provider.SearchInput{Text: a.SearchInput, Domain: a.Domain})
 		if err != nil {
 			e.system(activity.LevelWarn, a.Provider, fmt.Sprintf("Alert %q skipped: %v", a.Name, err))
 			continue
@@ -429,7 +437,12 @@ type pollOutcome struct {
 func (e *Engine) poll(ctx context.Context, p provider.Provider, q provider.Query, searchID int64,
 	alerts []*compiledAlert, st pollState, pending []pendingItem, now time.Time) pollOutcome {
 
-	listings, err := p.Search(ctx, q)
+	var listings []model.Listing
+	err := safeCall(p, "search", func() error {
+		var serr error
+		listings, serr = p.Search(ctx, q)
+		return serr
+	})
 	if err != nil {
 		var cool *httpx.CooldownError
 		status := "error"
@@ -511,7 +524,7 @@ func (e *Engine) poll(ctx context.Context, p provider.Provider, q provider.Query
 			}
 		}
 		if len(matched) > 0 {
-			matches += e.record(ctx, p.Info(), c.listing, matched, now)
+			matches += e.record(ctx, p, c.listing, matched, now)
 		}
 	}
 
@@ -581,7 +594,12 @@ func (e *Engine) loadDescription(ctx context.Context, p provider.Provider, l *mo
 		l.Description, l.HasDescription = desc, true
 		return nil
 	}
-	desc, err := p.FetchDescription(ctx, *l)
+	var desc string
+	err := safeCall(p, "description reading", func() error {
+		var ferr error
+		desc, ferr = p.FetchDescription(ctx, *l)
+		return ferr
+	})
 	if err != nil {
 		return err
 	}
@@ -591,21 +609,20 @@ func (e *Engine) loadDescription(ctx context.Context, p provider.Provider, l *mo
 }
 
 // record stores the matches of a listing and hands them to the notifier.
-// It returns the number of matches that were new.
-func (e *Engine) record(ctx context.Context, info provider.Info, l model.Listing, matched []*compiledAlert, now time.Time) int {
-	stored := l
-	if len(stored.Description) > 600 {
-		stored.Description = stored.Description[:600] + "…"
-	}
-
-	n := Notification{Provider: info, Listing: l}
+// When at least one match is new and the provider implements
+// provider.Enricher, the listing is enriched once (e.g. with the store
+// holding the item) before the notification is sent. It returns the number
+// of matches that were new.
+func (e *Engine) record(ctx context.Context, p provider.Provider, l model.Listing, matched []*compiledAlert, now time.Time) int {
+	info := p.Info()
+	n := Notification{Provider: info}
 	destSet := map[int64]bool{}
 	for _, a := range matched {
 		delivery := model.DeliveryPending
 		if len(a.alert.DestinationIDs) == 0 {
 			delivery = model.DeliveryNone
 		}
-		m := model.Match{AlertID: a.alert.ID, AlertName: a.alert.Name, Provider: info.ID, Listing: stored,
+		m := model.Match{AlertID: a.alert.ID, AlertName: a.alert.Name, Provider: info.ID, Listing: historySnapshot(l),
 			MatchedAt: now, Delivery: delivery}
 		inserted, err := e.store.InsertMatch(ctx, &m)
 		if err != nil {
@@ -626,10 +643,34 @@ func (e *Engine) record(ctx context.Context, info provider.Info, l model.Listing
 			}
 		}
 	}
-	if len(n.Alerts) > 0 && len(n.DestinationIDs) > 0 && e.notifier != nil {
+	if len(n.Alerts) == 0 {
+		return 0
+	}
+
+	if en, ok := p.(provider.Enricher); ok {
+		err := safeCall(p, "listing details", func() error { return en.Enrich(ctx, &l) })
+		if err != nil {
+			e.publish(ctx, activity.Event{Level: activity.LevelWarn, Kind: activity.KindMatch,
+				Message: fmt.Sprintf("Could not read the details of %q (the alert is sent anyway): %v", l.Title, err)})
+		} else if err := e.store.UpdateMatchListing(ctx, n.MatchIDs, historySnapshot(l)); err != nil {
+			e.publish(ctx, activity.Event{Level: activity.LevelError, Kind: activity.KindMatch, Message: "Database error: " + err.Error()})
+		}
+	}
+
+	n.Listing = l
+	if len(n.DestinationIDs) > 0 && e.notifier != nil {
 		e.notifier.Notify(n)
 	}
 	return len(n.Alerts)
+}
+
+// historySnapshot is the copy of a listing stored in the match history, with
+// a shortened description.
+func historySnapshot(l model.Listing) model.Listing {
+	if r := []rune(l.Description); len(r) > 600 {
+		l.Description = string(r[:600]) + "…"
+	}
+	return l
 }
 
 func (e *Engine) publish(ctx context.Context, ev activity.Event) {

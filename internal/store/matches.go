@@ -46,6 +46,21 @@ func (s *Store) SetMatchDelivery(ctx context.Context, ids []int64, delivery stri
 	return nil
 }
 
+// UpdateMatchListing replaces the listing snapshot of matches by id, for
+// example after the listing was enriched with its location.
+func (s *Store) UpdateMatchListing(ctx context.Context, ids []int64, l model.Listing) error {
+	raw, err := json.Marshal(l)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if _, err := s.db.ExecContext(ctx, `UPDATE matches SET listing = ? WHERE id = ?`, string(raw), id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ListMatches returns the most recent matches first.
 func (s *Store) ListMatches(ctx context.Context, f MatchFilter) ([]model.Match, error) {
 	query := `SELECT id, alert_id, alert_name, provider, listing, matched_at, delivery FROM matches WHERE 1 = 1`

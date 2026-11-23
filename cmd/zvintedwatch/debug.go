@@ -22,13 +22,13 @@ import (
 // It uses the default network settings and does not touch the database.
 func debugCmd(args []string) error {
 	if len(args) == 0 {
-		return errors.New(`usage: zvintedwatch debug search <url|keywords> [-domain vinted.fr] | debug item <listing url>`)
+		return errors.New(`usage: zvintedwatch debug search <url|keywords> [-provider id] [-domain d] | debug item <listing url> | debug enrich <listing url>`)
 	}
 	sub, args := args[0], args[1:]
 
 	fs := flag.NewFlagSet("debug "+sub, flag.ExitOnError)
-	providerID := fs.String("provider", "vinted", "site module to use")
-	domain := fs.String("domain", "", "country domain for keyword searches (e.g. vinted.fr)")
+	providerID := fs.String("provider", "", "site module to use (detected from the URL; required for plain keywords)")
+	domain := fs.String("domain", "", "domain for keyword searches (default: the site's default domain)")
 	proxy := fs.String("proxy", "", "optional proxy URL (http://, socks5://)")
 	_ = fs.Parse(reorder(args))
 	if fs.NArg() == 0 {
@@ -56,13 +56,14 @@ func debugCmd(args []string) error {
 		settings.Proxies = []string{*proxy}
 	}
 	registry := app.NewRegistry(fetcher)
-	p, ok := registry.Get(*providerID)
-	if !ok {
-		return fmt.Errorf("unknown provider %q", *providerID)
-	}
-	if err := fetcher.Configure(*providerID, settings); err != nil {
+	p, err := pickProvider(registry, *providerID, input)
+	if err != nil {
 		return err
 	}
+	if err := fetcher.Configure(p.Info().ID, settings); err != nil {
+		return err
+	}
+	fmt.Printf("Site module: %s\n", p.Info().Name)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -84,7 +85,7 @@ func debugCmd(args []string) error {
 			if l.Promoted {
 				flag = "P"
 			}
-			extra := strings.Join(nonEmpty(l.Brand, l.Size, l.Condition), " · ")
+			extra := strings.Join(nonEmpty(l.Brand, l.Size, l.Condition, l.Category), " · ")
 			fmt.Printf("%s %-12s %-10s %s  [%s]\n", flag, l.ID, engine.FormatPrice(l.Price, l.Currency), l.Title, extra)
 		}
 		fmt.Printf("\n%d listings (P = promoted, ignored by alerts)\n", len(listings))
@@ -94,14 +95,44 @@ func debugCmd(args []string) error {
 			return err
 		}
 		fmt.Printf("\n%s\n", desc)
+	case "enrich":
+		en, ok := p.(provider.Enricher)
+		if !ok {
+			return fmt.Errorf("the %s module adds no details to matched listings", p.Info().Name)
+		}
+		l := model.Listing{URL: input}
+		if err := en.Enrich(ctx, &l); err != nil {
+			return err
+		}
+		fmt.Printf("\nLocation: %s\n", l.Location)
 	default:
-		return fmt.Errorf("unknown debug command %q (use search or item)", sub)
+		return fmt.Errorf("unknown debug command %q (use search, item or enrich)", sub)
 	}
 	return nil
 }
 
+// pickProvider selects the site module: the -provider flag when given,
+// otherwise the module owning the URL.
+func pickProvider(r *provider.Registry, id, input string) (provider.Provider, error) {
+	if id != "" {
+		p, ok := r.Get(id)
+		if !ok {
+			return nil, fmt.Errorf("unknown site %q", id)
+		}
+		return p, nil
+	}
+	if p, ok := r.ForURL(input); ok {
+		return p, nil
+	}
+	ids := []string{}
+	for _, p := range r.All() {
+		ids = append(ids, p.Info().ID)
+	}
+	return nil, fmt.Errorf("cannot tell which site %q belongs to: add -provider (%s)", input, strings.Join(ids, ", "))
+}
+
 // reorder moves flags before positional arguments so that both
-// "debug search ps5 -domain vinted.fr" and "debug search -domain vinted.fr ps5" work.
+// "debug search ps5 -provider vinted" and "debug search -provider vinted ps5" work.
 func reorder(args []string) []string {
 	var flags, rest []string
 	for i := 0; i < len(args); i++ {

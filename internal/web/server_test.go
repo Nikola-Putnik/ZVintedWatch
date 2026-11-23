@@ -184,6 +184,20 @@ func TestAlertLifecycle(t *testing.T) {
 	}
 }
 
+func TestSitePauseEndpoint(t *testing.T) {
+	ts, _ := newTestServer(t, true)
+	if code, body := ts.do("PUT", "/api/sites/fake", map[string]bool{"enabled": false}, true); code != 200 {
+		t.Fatalf("pause failed: %d %s", code, body)
+	}
+	code, body := ts.do("GET", "/api/status", nil, false)
+	if code != 200 || !strings.Contains(string(body), `"enabled":false`) || !strings.Contains(string(body), `"orphanAlerts":0`) {
+		t.Fatalf("status must report the paused site: %s", body)
+	}
+	if code, _ := ts.do("PUT", "/api/sites/nope", map[string]bool{"enabled": false}, true); code != http.StatusBadRequest {
+		t.Fatalf("unknown site must be rejected, got %d", code)
+	}
+}
+
 func TestMatcherEndpoint(t *testing.T) {
 	ts, _ := newTestServer(t, true)
 	code, body := ts.do("POST", "/api/matcher/test", map[string]any{

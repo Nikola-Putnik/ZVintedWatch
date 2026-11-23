@@ -25,7 +25,7 @@ func (e *Engine) Validate(a model.Alert) error {
 	if !ok {
 		return fmt.Errorf("%w: unknown site %q", ErrValidation, a.Provider)
 	}
-	if _, err := p.ParseSearch(provider.SearchInput{Text: a.SearchInput, Domain: a.Domain}); err != nil {
+	if _, err := parseSearch(p, provider.SearchInput{Text: a.SearchInput, Domain: a.Domain}); err != nil {
 		return fmt.Errorf("%w: %v", ErrValidation, err)
 	}
 	if _, err := compileAlert(a); err != nil {
@@ -64,7 +64,7 @@ func (e *Engine) DescribeSearch(providerID, input, domain string, excludeAlertID
 	if !ok {
 		return SearchInfo{}, fmt.Errorf("%w: unknown site %q", provider.ErrInvalidSearch, providerID)
 	}
-	q, err := p.ParseSearch(provider.SearchInput{Text: input, Domain: domain})
+	q, err := parseSearch(p, provider.SearchInput{Text: input, Domain: domain})
 	if err != nil {
 		return SearchInfo{}, err
 	}
@@ -112,7 +112,7 @@ func (e *Engine) Preview(ctx context.Context, a model.Alert) (PreviewResult, err
 	if !ok {
 		return PreviewResult{}, fmt.Errorf("%w: unknown site %q", ErrValidation, a.Provider)
 	}
-	q, err := p.ParseSearch(provider.SearchInput{Text: a.SearchInput, Domain: a.Domain})
+	q, err := parseSearch(p, provider.SearchInput{Text: a.SearchInput, Domain: a.Domain})
 	if err != nil {
 		return PreviewResult{}, err
 	}
@@ -133,7 +133,12 @@ func (e *Engine) Preview(ctx context.Context, a model.Alert) (PreviewResult, err
 
 	if !res.Cached {
 		sctx := activity.WithScope(ctx, activity.Scope{Provider: p.Info().ID, Search: "Preview: " + q.Label})
-		all, err := p.Search(sctx, q)
+		var all []model.Listing
+		err := safeCall(p, "search", func() error {
+			var serr error
+			all, serr = p.Search(sctx, q)
+			return serr
+		})
 		if err != nil {
 			return PreviewResult{}, err
 		}

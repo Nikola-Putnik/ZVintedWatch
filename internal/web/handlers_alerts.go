@@ -30,9 +30,11 @@ func (s *Server) meta(w http.ResponseWriter, r *http.Request) error {
 }
 
 type providerStatus struct {
-	ID              string       `json:"id"`
-	Name            string       `json:"name"`
-	Color           string       `json:"color"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	// Enabled is false when the whole site is paused.
+	Enabled         bool         `json:"enabled"`
 	Health          httpx.Health `json:"health"`
 	Alerts          int          `json:"alerts"`
 	EnabledAlerts   int          `json:"enabledAlerts"`
@@ -60,8 +62,12 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) error {
 	providers := []providerStatus{}
 	for _, p := range s.Registry.All() {
 		info := p.Info()
+		enabled, err := s.Engine.SiteEnabled(ctx, info.ID)
+		if err != nil {
+			return err
+		}
 		ps := providerStatus{
-			ID: info.ID, Name: info.Name, Color: info.Color,
+			ID: info.ID, Name: info.Name, Color: info.Color, Enabled: enabled,
 			Health:          s.Fetcher.Health(info.ID),
 			Searches:        len(s.Engine.Searches(info.ID)),
 			RequestsPerHour: s.Engine.EstimatedRequestsPerHour(info.ID),
@@ -77,9 +83,17 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) error {
 		}
 		providers = append(providers, ps)
 	}
+	// Alerts of sites whose module is not installed are kept untouched.
+	orphans := 0
+	for _, a := range alerts {
+		if _, found := s.Registry.Get(a.Provider); !found {
+			orphans++
+		}
+	}
 	tg := s.Telegram.Settings()
 	return ok(w, map[string]any{
-		"providers": providers,
+		"providers":    providers,
+		"orphanAlerts": orphans,
 		"telegram": map[string]any{
 			"configured":   tg.Token != "",
 			"botUsername":  tg.BotUsername,

@@ -108,6 +108,10 @@ type Listing struct {
 	Brand     string `json:"brand,omitempty"`
 	Size      string `json:"size,omitempty"`
 	Condition string `json:"condition,omitempty"`
+	// Category is the marketplace category of the listing, when known.
+	Category string `json:"category,omitempty"`
+	// Location tells where the item is (seller city, store...), when known.
+	Location string `json:"location,omitempty"`
 
 	URL      string `json:"url"`
 	PhotoURL string `json:"photoUrl,omitempty"`

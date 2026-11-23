@@ -276,3 +276,20 @@ func (s *Server) resetCooldown(w http.ResponseWriter, r *http.Request) error {
 	s.Fetcher.ResetCooldown(id)
 	return ok(w, s.Fetcher.Health(id))
 }
+
+// --- Sites ------------------------------------------------------------------
+
+// setSiteEnabled pauses or resumes a whole site. Its alerts are kept.
+func (s *Server) setSiteEnabled(w http.ResponseWriter, r *http.Request) error {
+	id := r.PathValue("provider")
+	var body struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		return err
+	}
+	if err := s.Engine.SetSiteEnabled(r.Context(), id, body.Enabled); err != nil {
+		return err
+	}
+	return ok(w, map[string]bool{"enabled": body.Enabled})
+}

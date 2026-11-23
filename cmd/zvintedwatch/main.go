@@ -7,6 +7,7 @@
 //	zvintedwatch reset-password [flags] replace the web interface password
 //	zvintedwatch debug search <input>   run one search and print the listings
 //	zvintedwatch debug item <url>       fetch and print a listing description
+//	zvintedwatch debug enrich <url>     print the extra details of a listing (store...)
 //	zvintedwatch version                print version information
 //
 // Run "zvintedwatch run -h" to list the flags.
@@ -66,6 +67,7 @@ Usage:
   zvintedwatch reset-password [flags]   set a new random password for the web interface
   zvintedwatch debug search <url|words> run one search and print the listings
   zvintedwatch debug item <listing url> print the description of a listing
+  zvintedwatch debug enrich <url>       print the extra details of a listing (e.g. store)
   zvintedwatch version                  print version information
 
 Run "zvintedwatch run -h" for the list of flags.

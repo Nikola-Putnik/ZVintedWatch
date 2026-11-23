@@ -97,6 +97,9 @@ func (s *Server) routes() {
 	m.HandleFunc("PUT /api/settings/network/{provider}", s.api(s.updateNetwork))
 	m.HandleFunc("POST /api/providers/{provider}/reset-cooldown", s.api(s.resetCooldown))
 
+	// Sites (pause / resume a whole site module)
+	m.HandleFunc("PUT /api/sites/{provider}", s.api(s.setSiteEnabled))
+
 	// Live console
 	m.HandleFunc("GET /api/activity", s.api(s.recentActivity))
 	m.HandleFunc("GET /api/activity/stream", s.activityStream)
