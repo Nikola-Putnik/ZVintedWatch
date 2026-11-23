@@ -4,7 +4,10 @@ ZVintedWatch is designed so that a new marketplace is **one Go package plus one 
 registration**. The engine (grouping, scheduling, new-listing detection, keyword matching), the
 Telegram notifier and the web interface (a new section appears in the sidebar) work unchanged.
 
-This guide uses a hypothetical module for 2ememain.be / 2dehands.be / Marktplaats as an example.
+Two real modules show the pattern: [Vinted](../internal/provider/vinted) (private JSON API, session,
+HTML description) and [Cash Converters](../internal/provider/cashconverters) (PrestaShop JSON
+listing, store read from the product page). This guide uses a hypothetical module for
+2ememain.be / 2dehands.be / Marktplaats as an example.
 
 ## 1. Understand the contract
 
@@ -27,10 +30,25 @@ type Provider interface {
 | `FetchDescription` | Return the full description of a listing. Only called when a listing passed the title rules of an alert that has description rules. Return an error wrapping `provider.ErrListingUnavailable` when the listing was removed (it will not be retried). |
 
 `model.Listing` fields to fill: `Provider`, `ID` (unique within the site), `Title`, `Price`,
-`Currency`, `URL` (absolute), and when available `Brand`, `Size`, `Condition`, `PhotoURL`,
-`Promoted` (sponsored results are ignored), `Description` + `HasDescription` (if the search
-results include it), and `Sequence` (a value that grows with listing creation, such as a
-sequential id, used to ignore old listings pushed back to the top).
+`Currency`, `URL` (absolute), and when available `Brand`, `Size`, `Condition`, `Category`,
+`Location`, `PhotoURL`, `Promoted` (sponsored results are ignored), `Description` +
+`HasDescription` (if the search results include it), and `Sequence` (a value that grows with
+listing creation, such as a sequential id, used to ignore old listings pushed back to the top).
+
+### Optional: details for matched listings
+
+Some information is only available on the listing page (for example the store holding the item on
+Cash Converters). Implement the optional `provider.Enricher` interface:
+
+```go
+type Enricher interface {
+    Enrich(ctx context.Context, l *model.Listing) error
+}
+```
+
+The engine calls `Enrich` **once per listing that matched an alert**, never for the other
+listings, then sends the enriched listing to Telegram and stores it in the history. If it fails,
+the notification is sent anyway.
 
 ## 2. Write the package
 
@@ -175,8 +193,9 @@ func NewRegistry(f *httpx.Fetcher) *provider.Registry {
 }
 ```
 
-That's all: the site appears in the sidebar, the dashboard and the network settings, and alerts
-can be created for it.
+That's all: the site appears in the sidebar, the dashboard, the network settings and the
+*Sites* settings, alerts can be created for it, and the `debug` command recognises its URLs
+(`Registry.ForURL` uses `Info.Domains`).
 
 ## 4. Test it
 
@@ -188,6 +207,20 @@ can be created for it.
   go run ./cmd/zvintedwatch debug search -provider 2ememain "lego technic" -domain 2ememain.be
   ```
 - Run the full application, create an alert and watch the **Live activity** page.
+
+## Module lifecycle
+
+Site modules are independent from each other and from the rest of the application:
+
+| I want to… | What to do | What happens to the rest |
+|---|---|---|
+| **Pause** a site | Toggle it off on its page or in *Settings → Sites* (no code change). | No request is sent to that site; its alerts, history and settings are kept. Other sites are not affected. When resumed, its searches start from a fresh baseline (listings posted meanwhile are not sent). |
+| **Update** a module | Change files in `internal/provider/<site>/` (and its doc page). | Nothing else changes. Each site has its own network lanes, pacing and cooldowns. |
+| **Remove** a module | Delete its folder and its line in `app.NewRegistry`. | Its alerts stay in the database untouched, are not refreshed, and are reported on the dashboard. They work again if the module comes back. |
+
+A bug in a module cannot stop the application: a crash (panic) during a search, a description
+read or an enrichment is turned into an ordinary error for that refresh, shown in the live
+console, and the other sites keep running.
 
 ## Guidelines
 

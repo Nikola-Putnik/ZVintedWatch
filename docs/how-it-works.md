@@ -14,7 +14,7 @@ contribute, or simply understand why it behaves the way it does.
                          │   │  ▲        evaluates keyword rules (matcher), records matches                  │
                          │   │  │                                                                             │
                          │   ▼  │                                                                             │
-                         │  provider registry ── vinted (one package per marketplace)                        │
+                         │  provider registry ── vinted, cashconverters (one package per marketplace)        │
                          │   │                                                                                │
                          │   ▼                                                                                │
                          │  httpx ─── lanes (direct / proxies): pacing, cooldowns, browser fingerprint ────────┼──▶ marketplace
@@ -34,6 +34,7 @@ contribute, or simply understand why it behaves the way it does.
 | `internal/store` | SQLite persistence (pure Go, no CGO) with embedded migrations. |
 | `internal/provider` | The `Provider` interface every marketplace module implements. |
 | `internal/provider/vinted` | The Vinted module. |
+| `internal/provider/cashconverters` | The Cash Converters Belgium module. |
 | `internal/httpx` | Outgoing HTTP: lanes, pacing, cooldowns, Chrome fingerprint, cookie jars. |
 | `internal/matcher` | Keyword rule compilation and matching. |
 | `internal/engine` | Scheduling, new-listing detection, matching pipeline, previews. |
@@ -62,11 +63,24 @@ contribute, or simply understand why it behaves the way it does.
 7. **Matching.** For each candidate and each alert of the job: price range, then title rules. Only if
    they pass *and* the alert has description rules, the description is fetched (once per listing,
    cached and shared), then the description rules are applied.
-8. **Notification.** Matches are recorded; one Telegram message per listing and per chat is queued,
+8. **Details.** If the site module can add details that search results lack (Cash Converters: the
+   store holding the item), they are fetched once, only for listings that matched.
+9. **Notification.** Matches are recorded; one Telegram message per listing and per chat is queued,
    listing every matching alert. A chat never receives the same listing twice.
 
 If a description cannot be read because of a temporary error, the listing is retried on the next
 refreshes (up to three times) instead of being lost.
+
+## Independent site modules
+
+- Each site has its own network lanes: its pacing, cooldowns, proxies and cookies never affect
+  another site.
+- A whole site can be paused from the interface: its searches stop, its alerts are kept, and it
+  restarts from a fresh baseline when resumed.
+- A crash inside a module is caught and reported as a refresh error; the application and the
+  other sites keep running.
+- Alerts of a site whose module was removed stay in the database and are reported on the
+  dashboard.
 
 ## Staying under the radar
 

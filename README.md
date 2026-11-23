@@ -2,7 +2,7 @@
 
 # ZVintedWatch
 
-**Get a Telegram message seconds after a matching item is listed on Vinted.**
+**Get a Telegram message seconds after a matching item is listed on Vinted or Cash Converters.**
 
 Self-hosted · one small program · Windows, Linux, macOS, Raspberry Pi, seedboxes · no account needed
 
@@ -30,13 +30,20 @@ You describe each **alert** in a web interface:
 - how often to **refresh**: a fixed interval or a random one (e.g. every 30 s to 3 min);
 - which **Telegram chats** get the matches: your private chat, or a channel shared with friends.
 
-ZVintedWatch is built to be **multi-site**: each marketplace is a separate module and gets its own
-section in the interface. Vinted is the first one; others (such as 2ememain / 2dehands /
-Marktplaats) can be added without touching the rest of the application.
+ZVintedWatch is built to be **multi-site**: each marketplace is a separate module with its own
+section in the interface, and can be paused, updated or removed without affecting the others.
+
+| Site | Countries | Notes |
+|---|---|---|
+| [Vinted](docs/providers/vinted.md) | 23 country websites (vinted.fr, .be, .de, .co.uk…) | Search links with all filters, or keywords |
+| [Cash Converters](docs/providers/cashconverters.md) | Belgium (cashconverters.be, French and Dutch) | Search and category links with store/price filters; the store holding the item is shown in alerts |
+
+Other marketplaces (such as 2ememain / 2dehands / Marktplaats) can be added as modules — see
+[adding a marketplace](docs/adding-a-provider.md).
 
 ## Features
 
-- 🔔 **Instant Telegram alerts** with the photo, price, brand, size, condition and a button to open the listing.
+- 🔔 **Instant Telegram alerts** with the photo, price, brand, size, condition, store (when known) and a button to open the listing.
 - 🎯 **Precise keyword rules**: accent- and case-insensitive, whole words, phrases, alternatives (`a|b`),
   wildcards (`spider*`), exclusions and even regular expressions — see [keyword syntax](docs/keyword-syntax.md).
 - 🪶 **Request-saving engine**, designed to avoid IP bans:
@@ -47,6 +54,8 @@ Marktplaats) can be added without touching the rest of the application.
   - requests are paced, jittered, and automatically paused when the site starts refusing them.
 - 🧠 **No spam**: the first refresh only records the current listings; promoted listings and
   old listings pushed back to the top (“bumped”) are ignored; an item matching several alerts is sent once per chat.
+- 🧩 **Independent site modules**: pause a whole site in one click, and a problem on one site never
+  affects the others.
 - 🖥️ **Clean web interface**: dashboard, one section per site, alerts grouped by shared search,
   live preview of the rules on the current listings, light and dark themes, works on mobile.
 - 📟 **Live activity console**: every request sent and what came back, in real time, like a terminal.
@@ -101,9 +110,9 @@ Want several people to receive the alerts? Use a channel or a group — see the
 
 ### 4. Create an alert
 
-Open the **Vinted** section and click **New alert**. The easiest way:
+Open the section of a site (e.g. **Vinted**) and click **New alert**. The easiest way:
 
-1. On Vinted, search for what you want and apply the filters (category, brand, size, price…).
+1. On the website, search for what you want and apply the filters (category, brand, size, store, price…).
 2. Copy the address from your browser's address bar and paste it in the alert.
 3. Add title keywords if you want to narrow it down, check the **Preview**, and save.
 
@@ -132,12 +141,16 @@ crontab, Docker, reverse proxy, SSH tunnels) are in **[docs/deployment.md](docs/
 | [Configuration](docs/configuration.md) | Command-line options, environment variables, data folder, network settings |
 | [How it works](docs/how-it-works.md) | Architecture, request saving, new-listing detection, anti-blocking measures |
 | [Vinted notes](docs/providers/vinted.md) | How the Vinted module talks to Vinted and what to do when Vinted changes |
-| [Adding a marketplace](docs/adding-a-provider.md) | Developer guide to write a new site module |
+| [Cash Converters notes](docs/providers/cashconverters.md) | How the Cash Converters module works and how to maintain it |
+| [Adding a marketplace](docs/adding-a-provider.md) | Developer guide to write a new site module, and how to pause, update or remove one |
 | [Contributing](CONTRIBUTING.md) | Building from source, development workflow, tests |
 
 ## FAQ
 
-**Do I need a Vinted account?** No. ZVintedWatch only reads public search results, like a visitor would.
+**Do I need an account on the websites?** No. ZVintedWatch only reads public search results, like a visitor would.
+
+**Can I stop watching one site for a while?** Yes: switch the site off on its page or in
+*Settings → Sites*. Its alerts are kept, and the other sites keep running.
 
 **Will I get blocked?** ZVintedWatch does everything it can to stay discreet (shared searches,
 pacing, random intervals, a real browser fingerprint, automatic pauses). With reasonable intervals
@@ -171,7 +184,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.
 ## Disclaimer
 
 ZVintedWatch is an independent open-source project. It is **not affiliated with, endorsed by or
-sponsored by Vinted** or any other marketplace; all trademarks belong to their owners. It is meant
+sponsored by Vinted, Cash Converters** or any other marketplace; all trademarks belong to their owners. It is meant
 for personal use: keep refresh intervals reasonable and respect the terms of use of the websites
 you monitor. The authors are not responsible for how the software is used.
 

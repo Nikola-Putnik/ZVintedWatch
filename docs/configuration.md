@@ -10,6 +10,7 @@ zvintedwatch [run] [options]            start ZVintedWatch (default command)
 zvintedwatch reset-password [options]   replace the interface password with a random one
 zvintedwatch debug search <url|words>   run one search and print the listings (no database)
 zvintedwatch debug item <listing url>   print the description of a listing (no database)
+zvintedwatch debug enrich <listing url> print the extra details of a listing, e.g. its store
 zvintedwatch version                    print version information
 ```
 
@@ -29,8 +30,10 @@ zvintedwatch -listen 0.0.0.0:9000 -data-dir /srv/zvintedwatch
 ZVW_LISTEN=127.0.0.1:18080 zvintedwatch
 ```
 
-The `debug` commands accept `-domain vinted.fr` (for keyword searches) and `-proxy socks5://…`.
-They are useful to check quickly that a marketplace module still works.
+The `debug` commands detect the site from the URL. For plain keywords add `-provider <id>`
+(`vinted`, `cashconverters`) and optionally `-domain` (e.g. `vinted.fr`). `-proxy socks5://…`
+sends the requests through a proxy. They are useful to check quickly that a site module still
+works.
 
 ## Data folder
 
@@ -53,6 +56,12 @@ Old records are cleaned up automatically every hour:
 
 Bot token, chats receiving alerts and the optional chat for system notices. See the
 [Telegram guide](telegram-setup.md).
+
+### Sites
+
+Each site can be paused or resumed (*Settings → Sites*, or the switch on the site page). A paused
+site sends no request; its alerts are kept unchanged. On resume, its searches record a new baseline
+so listings posted during the pause are not sent.
 
 ### Network (per site)
 
@@ -88,7 +97,7 @@ zvintedwatch reset-password -data-dir <your data folder>
 | Search | A search URL copied from the website, or keywords plus a country domain. URL filters are kept; the sort order is always “newest first”. |
 | Title / description keywords | See [keyword syntax](keyword-syntax.md). |
 | Price range | Optional, checked locally. |
-| Refresh interval | Fixed or random range, in seconds. Vinted: minimum 10 s, 60 s or more recommended. |
+| Refresh interval | Fixed or random range, in seconds. Vinted: minimum 10 s, 60 s or more recommended. Cash Converters: minimum 30 s, 2 min recommended. |
 | Chats | Telegram destinations. Without any chat, matches are only listed in the interface. |
 | Enabled | Paused alerts keep their settings but are not refreshed. |
 

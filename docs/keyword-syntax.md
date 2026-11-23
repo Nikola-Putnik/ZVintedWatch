@@ -67,7 +67,9 @@ Commas inside a regular expression do not split the term.
 
 ## Description rules and requests
 
-On Vinted, search results do not include descriptions, so reading one costs one extra request.
+On **Cash Converters**, descriptions come with the search results: description rules are free.
+
+On **Vinted**, search results do not include descriptions, so reading one costs one extra request.
 To keep requests low, ZVintedWatch only reads the description of a **new** listing whose title and
 price already satisfy at least one alert that has description rules. Each description is read at
 most once, then shared by every alert. Prefer title rules whenever possible.

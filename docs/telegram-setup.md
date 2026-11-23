@@ -65,8 +65,9 @@ refusing requests and ZVintedWatch pauses for a while (see
 
 ## What a notification looks like
 
-Each notification contains the listing photo, its title, the price, brand, size and condition,
-the names of the matching alerts and a button that opens the listing.
+Each notification contains the listing photo, its title, the price, brand, size, condition and
+category when the site provides them, the store or city holding the item when known (📍, e.g. the
+Cash Converters store), the names of the matching alerts and a button that opens the listing.
 
 Photos are converted to JPEG before being sent, because marketplaces often use the WebP format
 that some Telegram apps do not display. If the photo cannot be sent, ZVintedWatch falls back to a
